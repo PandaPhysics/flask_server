@@ -9,7 +9,7 @@ def push():
     repo = data['repository']['git_url'].split('/')[-1].replace('.git','')
     if not path.isdir(basedir+repo):
         system('cd %s; git lfs clone %s %s'%(basedir, data['repository']['clone_url'], repo))
-    system('cd %s/%s ; git pull origin master'%(basedir,repo))
+    system('cd %s/%s ; git lfs pull origin master'%(basedir,repo))
     system('cd %s ; doxygen ../doxy.cfg'%basedir)
     return 'Success!\n'
 
