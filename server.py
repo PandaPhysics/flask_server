@@ -11,5 +11,5 @@ def push():
         system('cd %s; git lfs clone %s %s'%(basedir, data['repository']['clone_url'], repo))
     system('cd %s/%s ; git pull origin master'%(basedir,repo))
     system('cd %s ; doxygen ../doxy.cfg'%basedir)
-    return 'Success!'
+    return 'Success!\n'
 
