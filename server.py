@@ -46,31 +46,44 @@ def query(cmd, args=()):
     cur.close()
     return rv
 
-@app.route('/condor', methods=['GET', 'POST'])
-def condor():
-    if request.method == 'GET':
-        # query db and return
-        task = request.args.get('task')
-        if not task:
-            abort(402)
-        where = 'task="%s"'%task
-        jid = request.args.get('job_id')
-        if jid:
-            where += ', job_id=%i'%jid
-        cursor = get_db().execute('SELECT `arg`, `job_id`, `timestamp` FROM jobs WHERE %s;'%where)
-        payload = cursor.fetchall()
-        cursor.close()
-        return json.dumps(payload)
-    else:
-        # use JSON payload to fill table
-        data = request.get_json()
-        try:
-            task = data['task']
-            timestamp = data['timestamp']
-            job_id = data['job_id']
-            records = [(task, arg, job_id, timestamp) for arg in data['args']]
-            get_db().executemany('INSERT INTO jobs VALUES (?,?,?,?)', records)
-            get_db().commit()
-            return str(len(records))+'\n'
-        except KeyError:
-            abort(402)
+@app.route('/condor_query', methods=['GET'])
+def condor_query():
+    # query db and return
+    task = request.args.get('task')
+    if not task:
+        abort(402)
+    where = 'task="%s"'%task
+    jid = request.args.get('job_id')
+    if jid:
+        where += ', job_id=%i'%jid
+    cursor = get_db().execute('SELECT `arg`, `job_id`, `timestamp` FROM jobs WHERE %s;'%where)
+    payload = cursor.fetchall()
+    cursor.close()
+    return json.dumps(payload)
+
+@app.route('/condor_done', methods=['POST'])
+def condor_done():
+    # use JSON payload to fill table
+    data = request.get_json()
+    try:
+        task = data['task']
+        timestamp = data['timestamp']
+        job_id = data['job_id']
+        records = [(task, arg, job_id, timestamp) for arg in data['args']]
+        get_db().executemany('INSERT INTO jobs VALUES (?,?,?,?)', records)
+        get_db().commit()
+        return str(len(records))+'\n'
+    except KeyError:
+        abort(402)
+
+@app.route('/condor_clean', methods=['POST'])
+def condor_clean():
+    # use JSON payload to fill table
+    data = request.get_json()
+    try:
+        task = data['task']
+        get_db().execute('DELETE FROM jobs WHERE task=(?)', (task,))
+        get_db().commit()
+        return 'Cleaned\n'
+    except KeyError:
+        abort(402)
