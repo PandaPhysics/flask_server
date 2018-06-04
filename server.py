@@ -10,7 +10,7 @@ app = Flask('')
 # called through GitHub webhook
 @app.route('/push', methods=['POST'])
 def push():
-    doxy_basedir = basedir + '/doxy/repos/'
+    doxy_basedir = basedir + '/doxygen/repos/'
     data = request.get_json()
     repo = data['repository']['git_url'].split('/')[-1].replace('.git','')
     if not path.isdir(doxy_basedir+repo):
