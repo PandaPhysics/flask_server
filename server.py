@@ -13,10 +13,10 @@ def push():
     doxy_basedir = basedir + '/doxygen/repos/'
     data = request.get_json()
     repo = data['repository']['git_url'].split('/')[-1].replace('.git','')
-    if not path.isdir(doxy_basedir+repo):
-        system('cd %s; git lfs clone %s %s'%(doxy_basedir, data['repository']['clone_url'], repo))
-    system('cd %s/%s ; git lfs pull origin master'%(doxy_basedir,repo))
-    system('cd %s ; doxygen ../doxy.cfg'%doxy_basedir)
+    giturl = data['repository']['clone_url']
+    cmd = 'bash %s/doxygen/run.sh %s %s %s'%(basedir, basedir, repo, giturl)
+    print cmd 
+    system(cmd + ' &')
     return 'Success!\n'
 
 
