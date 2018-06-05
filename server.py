@@ -82,7 +82,11 @@ def condor_clean():
     data = request.get_json()
     try:
         task = data['task']
-        get_db().execute('DELETE FROM jobs WHERE task=(?)', (task,))
+        if 'job_id' in data:
+            job_id = data['job_id']
+            get_db().execute('DELETE FROM jobs WHERE task=(?) AND job_id=(?)', (task,job_id))
+        else:
+            get_db().execute('DELETE FROM jobs WHERE task=(?)', (task,))
         get_db().commit()
         return 'Cleaned\n'
     except KeyError:
