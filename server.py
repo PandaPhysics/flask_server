@@ -14,6 +14,7 @@ def push():
     data = request.get_json()
     repo = data['repository']['git_url'].split('/')[-1].replace('.git','')
     giturl = data['repository']['clone_url']
+    # actual process is off-loaded to bash script to run asynchronously
     cmd = 'bash %s/doxygen/run.sh %s %s %s'%(basedir, basedir, repo, giturl)
     print cmd 
     system(cmd + ' &')
