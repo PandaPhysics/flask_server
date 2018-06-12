@@ -30,8 +30,9 @@ def get_db():
     if db is None:
         db = g._database = sqlite3.connect(dbpath)
         if not exists:
+            schema = str(open(basedir+'/condor/schema.sql')).strip()
             cursor = db.cursor()
-            cursor.execute('CREATE TABLE jobs (task TEXT, arg TEXT, job_id TEXT, timestamp INTEGER)')
+            cursor.execute(schema)
             cursor.close()
     return db 
 
@@ -47,22 +48,22 @@ def query(cmd, args=()):
     cur.close()
     return rv
 
-@app.route('/condor_query', methods=['GET'])
+@app.route('/condor/query', methods=['GET'])
 def condor_query():
     # query db and return
     task = request.args.get('task')
     if not task:
         abort(402)
-    where = 'task="%s"'%task
+    where = 'task = ?'
+    args=[task]
     jid = request.args.get('job_id')
     if jid:
-        where += ', job_id=%i'%jid
-    cursor = get_db().execute('SELECT `arg`, `job_id`, `timestamp` FROM jobs WHERE %s;'%where)
-    payload = cursor.fetchall()
-    cursor.close()
+        where += ' AND job_id = ?'
+        args.append(jid)
+    payload = query('SELECT `arg`, `job_id`, `timestamp`, `starttime`, `host` FROM jobs WHERE %s;'%where, args)
     return json.dumps(payload)
 
-@app.route('/condor_done', methods=['POST'])
+@app.route('/condor/done', methods=['POST'])
 def condor_done():
     # use JSON payload to fill table
     data = request.get_json()
@@ -70,14 +71,48 @@ def condor_done():
         task = data['task']
         timestamp = data['timestamp']
         job_id = data['job_id']
-        records = [(task, arg, job_id, timestamp) for arg in data['args']]
-        get_db().executemany('INSERT INTO jobs VALUES (?,?,?,?)', records)
-        get_db().commit()
-        return str(len(records))+'\n'
+        # see if we know the job
+        if len(query('SELECT `job_id` FROM jobs WHERE task = ? AND job_id = ?', (task, job_id))):
+            for arg in data['args']:
+                get_db().execute('UPDATE jobs SET timestamp = ? WHERE task = ? AND job_id = ? AND arg = ?', 
+                                 (timestamp, task, job_id, arg))
+            get_db().commit()
+            return str(len(data['args'])) + '\n'
+        else:
+            records = [(task, arg, job_id, timestamp, None, None) for arg in data['args']]
+            get_db().executemany('INSERT INTO jobs VALUES (?,?,?,?,?,?)', records)
+            get_db().commit()
+            return str(len(records))+'\n'
     except KeyError:
         abort(402)
 
-@app.route('/condor_clean', methods=['POST'])
+@app.route('/condor/start', methods=['POST'])
+def condor_start():
+    # use JSON payload to fill table
+    data = request.get_json()
+    try:
+        task = data['task']
+        starttime = data['starttime']
+        host = data['host']
+        job_id = data['job_id']
+        # see if we know the job
+        if len(query('SELECT `job_id` FROM jobs WHERE task = ? AND job_id = ?', (task, job_id))):
+            for arg in data['args']:
+                get_db().execute(
+                        'UPDATE jobs SET starttime = ?, host = ? WHERE task = ? AND job_id = ? AND arg = ?', 
+                         (starttime, host, task, job_id, arg)
+                    )
+            get_db().commit()
+            return str(len(data['args'])) + '\n'
+        else:
+            records = [(task, arg, job_id, None, starttime, host) for arg in data['args']]
+            get_db().executemany('INSERT INTO jobs VALUES (?,?,?,?,?,?)', records)
+            get_db().commit()
+            return str(len(records))+'\n'
+    except KeyError:
+        abort(402)
+
+@app.route('/condor/clean', methods=['POST'])
 def condor_clean():
     # use JSON payload to fill table
     data = request.get_json()
@@ -85,9 +120,9 @@ def condor_clean():
         task = data['task']
         if 'job_id' in data:
             job_id = data['job_id']
-            get_db().execute('DELETE FROM jobs WHERE task=(?) AND job_id=(?)', (task,job_id))
+            get_db().execute('DELETE FROM jobs WHERE task=? AND job_id=?', (task,job_id))
         else:
-            get_db().execute('DELETE FROM jobs WHERE task=(?)', (task,))
+            get_db().execute('DELETE FROM jobs WHERE task=?', (task,))
         get_db().commit()
         return 'Cleaned\n'
     except KeyError:
