@@ -26,14 +26,16 @@ dbpath = basedir + '/condor/tasks.sqlite'
 exists = path.isfile(dbpath)
 
 def get_db():
+    global exists
     db = getattr(g, '_database', None)
     if db is None:
         db = g._database = sqlite3.connect(dbpath)
         if not exists:
-            schema = str(open(basedir+'/condor/schema.sql')).strip()
+            schema = str(open(basedir+'/condor/schema.sql').read()).strip()
             cursor = db.cursor()
             cursor.execute(schema)
             cursor.close()
+            exists = True
     return db 
 
 @app.teardown_appcontext
