@@ -11,6 +11,8 @@ if [[ $(ps U snarayan | grep "python.*flask" | wc -l) > 1 ]]; then
     sleep 1
 fi
 
+exit 0 
+
 echo -n "Starting server..."
 # need python>=2.7.9
 cd /cvmfs/cms.cern.ch/slc6_amd64_gcc630/cms/cmssw/CMSSW_9_4_6/; eval `scramv1 runtime -sh`

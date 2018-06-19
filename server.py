@@ -1,3 +1,4 @@
+from werkzeug.exceptions import HTTPException
 from flask import request, Flask, abort, g
 from os import system, path, getenv
 import sqlite3
@@ -5,6 +6,14 @@ import json
 
 basedir = getenv('FLASK_BASE_DIR') 
 app = Flask('')
+
+class BadInput(HTTPException):
+    code = 400
+    description = '<p>Malformed input.</p>'
+
+class DBError(HTTPException):
+    code = 500
+    description = '<p>DB Error.</p>'
 
 # actions to be taken on push to Panda* repositories
 # called through GitHub webhook
@@ -29,7 +38,7 @@ def get_db():
     global exists
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(dbpath)
+        db = g._database = sqlite3.connect(dbpath, timeout=30) # sometimes we need long concurrency
         if not exists:
             schema = str(open(basedir+'/condor/schema.sql').read()).strip()
             cursor = db.cursor()
@@ -45,17 +54,20 @@ def close_connection(exception):
         db.close()
 
 def query(cmd, args=()):
-    cur = get_db().execute(cmd, args)
-    rv = cur.fetchall()
-    cur.close()
-    return rv
+    try:
+        cur = get_db().execute(cmd, args)
+        rv = cur.fetchall()
+        cur.close()
+        return rv
+    except:
+        raise DBError
 
 @app.route('/condor/query', methods=['GET'])
 def condor_query():
     # query db and return
     task = request.args.get('task')
     if not task:
-        abort(402)
+        raise BadInput
     where = 'task = ?'
     args=[task]
     jid = request.args.get('job_id')
@@ -86,7 +98,9 @@ def condor_done():
             get_db().commit()
             return str(len(records))+'\n'
     except KeyError:
-        abort(402)
+        raise BadInput
+    except OperationalError:
+        raise DBError
 
 @app.route('/condor/start', methods=['POST'])
 def condor_start():
@@ -112,7 +126,9 @@ def condor_start():
             get_db().commit()
             return str(len(records))+'\n'
     except KeyError:
-        abort(402)
+        raise BadInput
+    except OperationalError:
+        raise DBError
 
 @app.route('/condor/clean', methods=['POST'])
 def condor_clean():
@@ -128,4 +144,6 @@ def condor_clean():
         get_db().commit()
         return 'Cleaned\n'
     except KeyError:
-        abort(402)
+        raise BadInput
+    except OperationalError:
+        raise DBError
