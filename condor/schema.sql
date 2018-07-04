@@ -1,1 +1,2 @@
-CREATE TABLE jobs (task TEXT, arg TEXT, job_id TEXT, timestamp INTEGER, starttime INTEGER, host TEXT) 
+CREATE TABLE IF NOT EXISTS jobs (task TEXT, arg TEXT, job_id TEXT, timestamp INTEGER, starttime INTEGER, host TEXT, host_id INTEGER);
+CREATE TABLE IF NOT EXISTS nodes (host TEXT, lat REAL, lon REAL, id INTEGER PRIMARY KEY AUTOINCREMENT);

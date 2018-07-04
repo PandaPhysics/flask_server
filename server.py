@@ -1,6 +1,7 @@
 from werkzeug.exceptions import HTTPException
 from flask import request, Flask, abort, g
 from os import system, path, getenv
+from subprocess import check_output
 import sqlite3
 import json
 
@@ -62,6 +63,30 @@ def query(cmd, args=()):
     except:
         raise DBError
 
+def geo(hostname):
+    cmd = ['geoiplookup', hostname]
+    lines = check_output(cmd, shell=False).strip().split('\n')
+    if len(lines) == 0 or "can't resolve" in lines[0]:
+        return None, None 
+    ll = lines[1].replace(',','').split()
+    return float(ll[-4]), float(ll[-3])
+
+def get_host_id(hostname):
+    r = query('SELECT `id` FROM nodes WHERE host = ?', (hostname,))
+    if len(r) == 0:
+        lat,lon = geo(hostname)
+        get_db().execute('INSERT INTO nodes (host,lat,lon) VALUES (?,?,?)', [hostname, lat, lon])
+        get_db().commit()
+        r = query('SELECT `id` FROM nodes WHERE host = ?', (hostname,))
+    return r[0][0]
+
+def insert_missing_hosts():
+    hosts = list(set(query('SELECT `host` FROM jobs')))
+    for h in hosts:
+        if h is not None:
+            get_host_id(h)
+
+
 @app.route('/condor/query', methods=['GET'])
 def condor_query():
     # query db and return
@@ -99,7 +124,8 @@ def condor_done():
             return str(len(records))+'\n'
     except KeyError:
         raise BadInput
-    except OperationalError:
+    except sqlite3.OperationalError as e:
+        print str(e)
         raise DBError
 
 @app.route('/condor/start', methods=['POST'])
@@ -110,24 +136,29 @@ def condor_start():
         task = data['task']
         starttime = data['starttime']
         host = data['host']
+        host_id = get_host_id(host)
         job_id = data['job_id']
         # see if we know the job
         if len(query('SELECT `job_id` FROM jobs WHERE task = ? AND job_id = ?', (task, job_id))):
             for arg in data['args']:
                 get_db().execute(
-                        'UPDATE jobs SET starttime = ?, host = ? WHERE task = ? AND job_id = ? AND arg = ?', 
-                         (starttime, host, task, job_id, arg)
+                        'UPDATE jobs SET starttime = ?, host_id = ? WHERE task = ? AND job_id = ? AND arg = ?', 
+                         (starttime, host_id, task, job_id, arg)
                     )
             get_db().commit()
             return str(len(data['args'])) + '\n'
         else:
-            records = [(task, arg, job_id, None, starttime, host) for arg in data['args']]
-            get_db().executemany('INSERT INTO jobs VALUES (?,?,?,?,?,?)', records)
+            records = [(task, arg, job_id, None, starttime, host_id) for arg in data['args']]
+            get_db().executemany(
+                    'INSERT INTO jobs (task,arg,job_id,timestamp,starttime,host_id) VALUES (?,?,?,?,?,?)', 
+                    records)
             get_db().commit()
             return str(len(records))+'\n'
+        get_latlon(host)
     except KeyError:
         raise BadInput
-    except OperationalError:
+    except sqlite3.OperationalError as e:
+        print str(e)
         raise DBError
 
 @app.route('/condor/clean', methods=['POST'])
@@ -145,5 +176,5 @@ def condor_clean():
         return 'Cleaned\n'
     except KeyError:
         raise BadInput
-    except OperationalError:
+    except sqlite3.OperationalError:
         raise DBError
