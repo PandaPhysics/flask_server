@@ -64,12 +64,17 @@ def query(cmd, args=()):
         raise DBError
 
 def geo(hostname):
-    cmd = ['geoiplookup', hostname]
-    lines = check_output(cmd, shell=False).strip().split('\n')
-    if len(lines) == 0 or "can't resolve" in lines[0]:
-        return None, None 
-    ll = lines[1].replace(',','').split()
-    return float(ll[-4]), float(ll[-3])
+    try:
+        cmd = ['geoiplookup', hostname]
+        lines = check_output(cmd, shell=False).strip().split('\n')
+        if len(lines) == 0 or "can't resolve" in lines[0] or 'not found' in lines[0]:
+            return None, None 
+        ll = lines[1].replace(',','').split()
+        return float(ll[-4]), float(ll[-3])
+    except:
+        print hostname
+        print lines 
+        return 0,0
 
 def get_host_id(hostname):
     r = query('SELECT `id` FROM nodes WHERE host = ?', (hostname,))

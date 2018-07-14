@@ -25,6 +25,7 @@ cd /cvmfs/cms.cern.ch/slc6_amd64_gcc630/cms/cmssw/CMSSW_9_4_6/; eval `scramv1 ru
 cd $FLASK_BASE_DIR
 export FLASK_APP=server.py
 date > ${FLASK_BASE_DIR}/keyfile
+which gunicorn
 # using builtin synchronous processes
 #gunicorn server:app -w 4 --access-logfile - --timeout 120 -b 0.0.0.0:5000 > /local/${USER}/logs/flask.log 2>&1 & disown
 # using coroutines from gevent
