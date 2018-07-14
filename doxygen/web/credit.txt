@@ -1,1 +1,0 @@
-This template is cloned from https://github.com/Velron/doxygen-bootstrapped
