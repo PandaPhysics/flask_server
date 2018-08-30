@@ -103,6 +103,26 @@ def insert_missing_hosts():
             get_host_id(h)
 
 
+@app.route('/condor/requestdata', methods=['POST'])
+@timed
+def condor_requestdata():
+    data = request.get_json()
+    try:
+        p = data['path']
+        now = time()
+        b = data['bytes'] / 1e6
+        if len(query('SELECT path FROM files WHERE path = %s', (p,))) > 0:
+            get_cursor().execute('UPDATE files SET last_access = %s WHERE path = %s', (now, p))
+        else:
+            get_cursor().execute('INSERT INTO files (path,last_access,mbytes) VALUES (%s,%s,%s)', (p, now, b))
+        get_db().commit()
+        return '0'
+    except KeyError:
+        raise BadInput
+    except sql.Error as e:
+        print str(e)
+        raise DBError
+
 @app.route('/condor/query', methods=['GET'])
 @timed
 def condor_query():
@@ -130,12 +150,13 @@ def condor_done():
         job_id = data['job_id']
         exit_code = data.get('exit_code', 0)
         # see if we know the job
-        if len(query('SELECT `job_id` FROM jobs WHERE task = %s AND job_id = %s', (task, job_id))):
-            for arg in data['args']:
-                get_cursor().execute('UPDATE jobs SET timestamp = %s, exit_code = %s WHERE task = %s AND job_id = %s AND arg = %s', 
-                                 (timestamp, exit_code, task, job_id, arg))
+        ids = query('SELECT `id` FROM jobs WHERE task = %s AND job_id = %s', (task, job_id))
+        if len(ids):
+            for i in ids:
+                get_cursor().execute('UPDATE jobs SET timestamp = %s, exit_code = %s WHERE id = %s', 
+                                     (timestamp, exit_code, i))
             get_db().commit()
-            return str(len(data['args'])) + '\n'
+            return str(len(ids)) + '\n'
         else:
             records = [(task, arg, job_id, timestamp, None, None, exit_code) for arg in data['args']]
             get_cursor().executemany('INSERT INTO jobs (task,arg,job_id,timestamp,starttime,host_id,exit_code) VALUES (%s,%s,%s,%s,%s,%s,%s)', records)

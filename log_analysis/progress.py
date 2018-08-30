@@ -73,10 +73,12 @@ ax1.tick_params('y', colors='m')
 
 ax2 = ax1.twinx()
 for a in apis:
-    ax2.plot(data['t'], data[a], label=a)
+    if a == 'clean':
+        continue
+    ax2.semilogy(data['t'], data[a], label=a)
 ax2.set_ylabel('Average query time [s]')
 
-plt.legend(loc=0)
+plt.legend(loc=2)
 fig.tight_layout()
 
 out = '/home/snarayan/public_html/figs/thesis/bird_watcher'
