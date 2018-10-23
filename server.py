@@ -4,7 +4,7 @@ from os import system, path, getenv
 from subprocess import check_output
 import json
 import MySQLdb as sql 
-from time import time 
+from time import time, localtime, strftime
 
 basedir = getenv('FLASK_BASE_DIR') 
 app = Flask('')
@@ -20,8 +20,9 @@ class DBError(HTTPException):
 def timed(fn):
     def _f():
         start = time()
+        print fn.func_name,'starting:',strftime('%Y%m%d:%H:%M:%S', localtime(time()))
         x = fn()
-        print fn.func_name,':',time()-start,'s'
+        print fn.func_name,'took:',time()-start,'s'
         return x
     _f.func_name = fn.func_name
     return _f

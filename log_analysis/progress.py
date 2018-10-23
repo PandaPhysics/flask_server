@@ -69,16 +69,17 @@ fig, ax1 = plt.subplots()
 ax1.plot(data['t'], data['N'], 'm-')
 ax1.set_xlabel('Time [H]')
 ax1.set_ylabel('Number of queries / Hour', color='m')
+#ax1.set_xscale('symlog')
 ax1.tick_params('y', colors='m')
 
 ax2 = ax1.twinx()
 for a in apis:
-    if a == 'clean':
-        continue
+#     if a == 'clean':
+#         continue
     ax2.semilogy(data['t'], data[a], label=a)
 ax2.set_ylabel('Average query time [s]')
 
-plt.legend(loc=2)
+plt.legend(loc='best', fancybox=True, framealpha=0.5)
 fig.tight_layout()
 
 out = '/home/snarayan/public_html/figs/thesis/bird_watcher'

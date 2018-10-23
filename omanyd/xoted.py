@@ -6,7 +6,7 @@ from time import time, strftime, gmtime
 from re import sub
 import logging
 
-THRESHOLD = 5e6 # (5x2 = 10 TB / user) in units of MB 
+THRESHOLD = 20e6 # (5x2 = 10 TB / user) in units of MB 
 VERBOSITY = 20
 
 logging.basicConfig(level=VERBOSITY, format='%(asctime)-15s %(message)s')

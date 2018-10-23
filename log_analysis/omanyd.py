@@ -39,10 +39,10 @@ try:
         if 'threshold' not in line:
             continue
         x = mktime(strptime(line.split(',')[0], '%Y-%m-%d %H:%M:%S'))
-        t = float(line.split()[-1].replace('GB',''))
+        t = float(line.split()[-1].replace('GB','')) / 1e3
         line = next(get)
         line = next(get)
-        v = float(sub('GB.*', '', sub('.*volume ', '', line)))
+        v = float(sub('GB.*', '', sub('.*volume ', '', line))) / 1e3
         while True:
             line = next(get)
             if 'removed' not in line:
@@ -66,15 +66,16 @@ fig, ax1 = plt.subplots()
 ax1.plot(data['x'], data['t'], label='Threshold')
 ax1.plot(data['x'], data['v'], label='Used')
 ax1.set_xlabel('Time [H]')
-ax1.set_ylabel('Volume [GB]')
+ax1.set_ylabel('Volume [TB]')
 ax1.set_ylim(ymin=0)
-plt.legend(loc=3)
+ax1.set_xscale('symlog')
+plt.legend(loc=3, fancybox=True, framealpha=0.5)
 
 ax2 = ax1.twinx()
 ax2.plot(data['x'], data['d'], 'm-', label='Files deleted')
 ax2.set_ylabel('Number of files', color='m')
 ax2.tick_params('y', colors='m')
-plt.legend(loc=4)
+plt.legend(loc=4, fancybox=True, framealpha=0.5)
 
 fig.tight_layout()
 
