@@ -113,7 +113,11 @@ def condor_requestdata():
         now = time()
         b = data['bytes'] / 1e6
         if len(query('SELECT path FROM files WHERE path = %s', (p,))) > 0:
-            get_cursor().execute('UPDATE files SET last_access = %s WHERE path = %s', (now, p))
+            # two options here...either set just the file, or the entire dataset
+            # let's test the dataset. file is commented out below 
+            get_cursor().execute('UPDATE files SET last_access = %s WHERE path LIKE %s', 
+                                 (now, '/'.join(p.split('/')[:-1])+'/%'))
+            #get_cursor().execute('UPDATE files SET last_access = %s WHERE path = %s', (now, p))
         else:
             get_cursor().execute('INSERT INTO files (path,last_access,mbytes) VALUES (%s,%s,%s)', (p, now, b))
         get_db().commit()

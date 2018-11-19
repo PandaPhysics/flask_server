@@ -39,12 +39,13 @@ try:
             continue 
         line2 = next(get)
         try:
-            line2 = line2.split('[')[1].split(' ')[0]
-            t_ = mktime(strptime(line2, '%d/%b/%Y:%H:%M:%S'))
-        except:
+            line_ = line.split(': ')[1].split(' ')[0]
+            t_ = mktime(strptime(line_, '%Y%m%d:%H:%M:%S'))
+        except Exception as e:
             print line
             print line2
             t_ = t 
+            raise e
         if t is None or t_ > t + BIN:
             t = t_
             data['t'].append(t)
@@ -53,12 +54,13 @@ try:
                 data[a].append(0)
         data['N'][-1] += 1
         a = line.split(' ')[0].replace('condor_','')
-        data[a][-1] += float(line.split(' ')[2])
-except StopIteration as e :
+        data[a][-1] += float(line2.split(' ')[2])
+except StopIteration:
     pass
 
 for k,v in data.iteritems():
     data[k] = np.array(v)
+    print k, data[k]
 
 data['t'] -= time()
 data['t'] *= s2h 

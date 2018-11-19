@@ -31,7 +31,7 @@ which gunicorn
 # using builtin synchronous processes
 #gunicorn server:app -w 4 --access-logfile - --timeout 120 -b 0.0.0.0:5000 > /local/${USER}/logs/flask.log 2>&1 & disown
 # using coroutines from gevent
-gunicorn server:app -w 4 --access-logfile - --timeout 120 -k gevent --worker-connections 500 -b 0.0.0.0:5000 > /local/${USER}/logs/flask.log 2>&1 & disown
+gunicorn server:app -w 8 --access-logfile - --timeout 120 -k gevent --worker-connections 500 -b 0.0.0.0:5000 > /local/${USER}/logs/flask.log 2>&1 & disown
 # using bare flask = not recommended! 
 #python -m flask run --host=0.0.0.0 > /local/${USER}/logs/flask.log 2>&1 & disown
 
