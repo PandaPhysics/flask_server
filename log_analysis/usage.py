@@ -58,7 +58,7 @@ ax1.set_ylabel('Volume [TB]')
 #ax1.set_ylim(ymin=0)
 ax1.set_yscale('symlog')
 #ax1.set_xscale('symlog')
-plt.legend(loc=0, fancybox=True, framealpha=0.5, prop={'size':6})
+plt.legend(loc=0, fancybox=True, prop={'size':6})
 
 fig.tight_layout()
 

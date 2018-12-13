@@ -8,12 +8,11 @@ import numpy as np
 from time import strptime, time, mktime
 from math import floor 
 
-print 'open file'
 flog =  open('/local/snarayan/logs/flask.log','r')
 
 BIN = 3600
 s2h = 1./3600
-apis = ['start', 'done', 'query', 'clean']
+apis = ['start', 'done', 'query', 'clean','requestdata']
 data = {'N':[],
         't':[]}
 for a in apis:
@@ -31,19 +30,18 @@ def get_line():
 get = get_line()
 
 t = None 
-print 'loop'
 try:
     while True:
         line = next(get)
-        if not any([line.startswith('condor_'+a) for a in apis]):
+        if not any([line.startswith('condor_'+a+' start') for a in apis]):
             continue 
         line2 = next(get)
+        if not line2.startswith(line.split()[0]+' took'):
+            continue 
         try:
             line_ = line.split(': ')[1].split(' ')[0]
             t_ = mktime(strptime(line_, '%Y%m%d:%H:%M:%S'))
         except Exception as e:
-            print line
-            print line2
             t_ = t 
             raise e
         if t is None or t_ > t + BIN:
@@ -60,7 +58,6 @@ except StopIteration:
 
 for k,v in data.iteritems():
     data[k] = np.array(v)
-    print k, data[k]
 
 data['t'] -= time()
 data['t'] *= s2h 
@@ -81,7 +78,7 @@ for a in apis:
     ax2.semilogy(data['t'], data[a], label=a)
 ax2.set_ylabel('Average query time [s]')
 
-plt.legend(loc='best', fancybox=True, framealpha=0.5)
+plt.legend(loc='best', fancybox=True)
 fig.tight_layout()
 
 out = '/home/snarayan/public_html/figs/thesis/bird_watcher'

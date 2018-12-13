@@ -9,7 +9,6 @@ from time import strptime, time, mktime
 from math import floor 
 from re import sub 
 
-print 'open file'
 flog =  open('/local/snarayan/logs/xoted.log','r')
 
 s2h = 1./3600
@@ -32,7 +31,6 @@ def get_line():
 get = get_line()
 
 t = None 
-print 'loop'
 try:
     while True:
         line = next(get)
@@ -69,13 +67,13 @@ ax1.set_xlabel('Time [H]')
 ax1.set_ylabel('Volume [TB]')
 ax1.set_ylim(ymin=0)
 ax1.set_xscale('symlog')
-plt.legend(loc=3, fancybox=True, framealpha=0.5)
+plt.legend(loc=3, fancybox=True)
 
 ax2 = ax1.twinx()
 ax2.plot(data['x'], data['d'], 'm-', label='Files deleted')
 ax2.set_ylabel('Number of files', color='m')
 ax2.tick_params('y', colors='m')
-plt.legend(loc=4, fancybox=True, framealpha=0.5)
+plt.legend(loc=4, fancybox=True)
 
 fig.tight_layout()
 

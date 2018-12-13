@@ -21,6 +21,7 @@ def timed(fn):
     def _f():
         start = time()
         print fn.func_name,'starting:',strftime('%Y%m%d:%H:%M:%S', localtime(time()))
+        print 'data =', request.get_json()
         x = fn()
         print fn.func_name,'took:',time()-start,'s'
         return x
@@ -114,10 +115,11 @@ def condor_requestdata():
         b = data['bytes'] / 1e6
         if len(query('SELECT path FROM files WHERE path = %s', (p,))) > 0:
             # two options here...either set just the file, or the entire dataset
-            # let's test the dataset. file is commented out below 
-            get_cursor().execute('UPDATE files SET last_access = %s WHERE path LIKE %s', 
-                                 (now, '/'.join(p.split('/')[:-1])+'/%'))
-            #get_cursor().execute('UPDATE files SET last_access = %s WHERE path = %s', (now, p))
+            # entire dataset 
+            # get_cursor().execute('UPDATE files SET last_access = %s WHERE path LIKE %s', 
+            #                      (now, '/'.join(p.split('/')[:-1])+'/%'))
+            # just the file
+            get_cursor().execute('UPDATE files SET last_access = %s WHERE path = %s', (now, p))
         else:
             get_cursor().execute('INSERT INTO files (path,last_access,mbytes) VALUES (%s,%s,%s)', (p, now, b))
         get_db().commit()
