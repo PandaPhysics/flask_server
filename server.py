@@ -156,6 +156,8 @@ def condor_done():
         timestamp = data['timestamp']
         job_id = data['job_id']
         exit_code = data.get('exit_code', 0)
+        if 'Kraken' in task:
+            return '0'
         # see if we know the job
         ids = query('SELECT `id` FROM jobs WHERE task = %s AND job_id = %s', (task, job_id))
         if len(ids):

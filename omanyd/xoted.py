@@ -26,29 +26,51 @@ class User(object):
     def __init__(self, user):
         self.name = user 
         self._pfiles = []
+        self._p2p = {}
         self._paths = set([])
         self._total_size = 0
     def has_file(self, path):
         return (path in self._paths)
     def add_file(self, path, size, last_access=NOW, insert=False):
-        p = PFile(path, size, last_access)
-        self._total_size += p.size
-        self._pfiles.append(p)
-        self._paths.add(path)
-        logging.debug('user %s has file path=%s, size=%.2fGB, access=%s'%(
-                        self.name,
-                        path,
-                        size / 1.e3,
-                        strftime('%Y-%m-%d %H:%M:%S', gmtime(p.last_access))))
-        if insert:
-            cursor.execute('INSERT INTO files (path,last_access,mbytes) VALUES (%s,%s,%s)', \
-                           (path, int(last_access), int(size)))
+        if not self.has_file(path):
+            p = PFile(path, size, last_access)
+            self._pfiles.append(p)
+            self._p2p[path] = p
+            self._paths.add(path)
+            self._total_size += p.size
+            if insert:
+                logging.debug('user %s has file path=%s, size=%.2fGB, access=%s'%(
+                                self.name,
+                                path,
+                                size / 1.e3,
+                                strftime('%Y-%m-%d %H:%M:%S', gmtime(p.last_access))))
+                cursor.execute('INSERT INTO files (path,last_access,mbytes) VALUES (%s,%s,%s)', \
+                               (path, int(last_access), int(size)))
+            return True
+        else:
+            p = self._p2p[path]
+            if p.size != size:
+                self._total_size -= p.size
+                self._total_size += size
+                p.size = size 
+                if insert:
+                    logging.debug('user %s has inconsistent file path=%s, size=%.2fGB, access=%s'%(
+                                    self.name,
+                                    path,
+                                    size / 1.e3,
+                                    strftime('%Y-%m-%d %H:%M:%S', gmtime(p.last_access))))
+                    cursor.execute('UPDATE files SET mbytes = %s WHERE path = %s', (size, path))
+                return True
+        return False
     def _sort(self):
         self._pfiles.sort(key=lambda x : x.last_access)
     def _pop(self, cursor):
         p = self._pfiles.pop(0)
         self._total_size -= p.size 
-        self._paths.remove(p.path)
+        try:
+            self._paths.remove(p.path)
+        except KeyError:
+            pass
         try:
             remove(p.path)
         except OSError:
@@ -73,47 +95,48 @@ class User(object):
     def n_files(self):
         return len(self._pfiles)
 
+if __name__ == '__main__':
 
-db = sql.connect(db='bird_watcher', user='snarayan')
-cursor = db.cursor()
+    db = sql.connect(db='bird_watcher', user='snarayan')
+    cursor = db.cursor()
 
-users = {}
-logging.info('querying database for all known files')
-cursor.execute('SELECT path,mbytes,last_access FROM files')
-for row in cursor.fetchall():
-    uname = sub('.*/store/user/','',row[0]).split('/')[0]
-    user = users
-    if uname not in users:
-        users[uname] = User(uname)
-    user = users[uname]
-    user.add_file(*row)
+    users = {}
+    logging.info('querying database for all known files')
+    cursor.execute('SELECT path,mbytes,last_access FROM files WHERE mbytes>0')
+    for row in cursor.fetchall():
+        uname = sub('.*/store/user/','',row[0]).split('/')[0]
+        user = users
+        if uname not in users:
+            users[uname] = User(uname)
+        user = users[uname]
+        user.add_file(*row)
 
-logging.info('checking filesystem for inconsistencies')
-for _,user in users.iteritems():
-    N = 0; mb = 0
-    for root,_,files in os.walk('/mnt/hadoop/cms/store/user/%s/pandaf/'%user.name):
-        for f in files:
-            fullpath = root + '/' + f
-            if not user.has_file(fullpath):
-                size = int(os.stat(fullpath).st_size * 1e-6)
-                user.add_file(fullpath, size, NOW, insert=True)
-                N += 1
-                mb += size
-    if N > 0:
-        logging.warning('user %s has inconsistent volume %.2fGB with %i files'%(
+    logging.info('checking filesystem for inconsistencies')
+    for _,user in users.iteritems():
+        N = 0; mb = 0
+        for root,_,files in os.walk('/mnt/hadoop/cms/store/user/%s/pandaf/'%user.name):
+            for f in files:
+                fullpath = root + '/' + f
+                if not user.has_file(fullpath):
+                    size = int(os.stat(fullpath).st_size * 1e-6)
+                    if user.add_file(fullpath, size, NOW, True):
+                        N += 1
+                        mb += size
+        if N > 0:
+            logging.warning('user %s has inconsistent volume %.2fGB with %i files'%(
+                user.name,
+                mb / 1.e3,
+                N))
+
+    for _,user in users.iteritems():
+        logging.info('user %s has total volume %.2fGB with %i files. cleaning up...'%(
             user.name,
-            mb / 1.e3,
-            N))
-
-for _,user in users.iteritems():
-    logging.info('user %s has total volume %.2fGB with %i files. cleaning up...'%(
-        user.name,
-        user.total_size / 1.e3,
-        user.n_files))
-    removed = user.clean(THRESHOLD, cursor)
-    logging.info('user %s has total volume %.2fGB after cleaning %i files'%(
-        user.name,
-        user.total_size / 1.e3,
-        len(removed)))
-                                  
-db.commit() 
+            user.total_size / 1.e3,
+            user.n_files))
+        removed = user.clean(THRESHOLD, cursor)
+        logging.info('user %s has total volume %.2fGB after cleaning %i files'%(
+            user.name,
+            user.total_size / 1.e3,
+            len(removed)))
+                                      
+    db.commit() 

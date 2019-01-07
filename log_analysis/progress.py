@@ -35,6 +35,7 @@ try:
         line = next(get)
         if not any([line.startswith('condor_'+a+' start') for a in apis]):
             continue 
+        _ = next(get) # data line
         line2 = next(get)
         if not line2.startswith(line.split()[0]+' took'):
             continue 
@@ -65,11 +66,11 @@ for a in apis:
     data[a] /= data['N']
 
 fig, ax1 = plt.subplots()
-ax1.plot(data['t'], data['N'], 'm-')
+ax1.plot(data['t'], data['N'], 'darkgrey')
 ax1.set_xlabel('Time [H]')
-ax1.set_ylabel('Number of queries / Hour', color='m')
+ax1.set_ylabel('Number of queries / Hour', color='darkgrey')
 #ax1.set_xscale('symlog')
-ax1.tick_params('y', colors='m')
+ax1.tick_params('y', colors='darkgrey')
 
 ax2 = ax1.twinx()
 for a in apis:

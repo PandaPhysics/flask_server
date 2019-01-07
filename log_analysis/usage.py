@@ -16,11 +16,11 @@ totals = {} # dataset : total_volume
 
 cursor.execute('SELECT last_access FROM files ORDER BY last_access ASC LIMIT 1')
 start = cursor.fetchall()[0][0]
-end = int(time())
+end = int(time()) + 60*15
 STEPS = 1000
 times = np.linspace(start, end, STEPS)
 step = times[1] - times[0]
-sigma2 = np.power(10 * step, 2)
+sigma2 = np.power(4 * step, 2)
 kernel = np.exp(-np.power(np.linspace(start-end, end-start, 2*STEPS), 2) / sigma2)
 
 cursor.execute('SELECT path,last_access,mbytes FROM files')
@@ -48,16 +48,19 @@ for k,v in data.iteritems():
     data['Other'] += v 
 
 s2h = 1./3600
-times = s2h * (times - end)
+times = s2h * (times - end) - 0.25
 
+maxsize = 0
 fig, ax1 = plt.subplots()
 for k,s in zip(order, sizes):
     ax1.plot(times, data[k], label='%s (%.2f GB)'%(k,s)) 
+    maxsize = max(maxsize, max(data[k]))
 ax1.set_xlabel('Access time [H]')
 ax1.set_ylabel('Volume [TB]')
 #ax1.set_ylim(ymin=0)
-ax1.set_yscale('symlog')
-#ax1.set_xscale('symlog')
+ax1.set_yscale('log')
+ax1.set_xscale('symlog')
+plt.ylim(bottom=0.001, top=1000*maxsize)
 plt.legend(loc=0, fancybox=True, prop={'size':6})
 
 fig.tight_layout()
